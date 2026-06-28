@@ -47,10 +47,13 @@ export default function AnalyticsChart({ data = [], loading }) {
   const textSub = dark ? '#64748b' : '#94a3b8';
   const gridColor = dark ? '#263047' : '#f1f5f9';
 
-  // Compute a trend value (avg of income + expense) to drive the green line overlay
+  // Trend line only makes sense with 2+ data points
+  const showTrendLine = data.length >= 2;
+
+  // Enrich data with trend value (avg of income + expense)
   const enrichedData = data.map((d) => ({
     ...d,
-    trend: Math.round((d.income + d.expense) / 2),
+    trend: showTrendLine ? Math.round((d.income + d.expense) / 2) : undefined,
   }));
 
   if (loading) {
@@ -79,9 +82,17 @@ export default function AnalyticsChart({ data = [], loading }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           {/* Legend */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            {[{ color: '#3b82f6', label: 'Income' }, { color: '#ef4444', label: 'Expense' }].map(({ color, label }) => (
+            {[
+              { color: '#3b82f6', label: 'Income' },
+              { color: '#ef4444', label: 'Expense' },
+              ...(showTrendLine ? [{ color: '#22c55e', label: 'Trend', isLine: true }] : []),
+            ].map(({ color, label, isLine }) => (
               <span key={label} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: textSub, fontWeight: '600' }}>
-                <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: color, display: 'inline-block' }} />
+                {isLine ? (
+                  <span style={{ width: '16px', height: '2px', background: color, display: 'inline-block', borderRadius: '2px' }} />
+                ) : (
+                  <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: color, display: 'inline-block' }} />
+                )}
                 {label}
               </span>
             ))}
@@ -108,9 +119,9 @@ export default function AnalyticsChart({ data = [], loading }) {
         <ResponsiveContainer width="100%" height={240}>
           <ComposedChart
             data={enrichedData}
-            margin={{ top: 10, right: 5, left: -15, bottom: 0 }}
-            barSize={16}
-            barGap={3}
+            margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
+            barCategoryGap={data.length === 1 ? '60%' : '30%'}
+            barGap={4}
           >
             <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
             <XAxis
@@ -118,31 +129,36 @@ export default function AnalyticsChart({ data = [], loading }) {
               tick={{ fontSize: 11, fill: textSub }}
               axisLine={false}
               tickLine={false}
+              padding={{ left: 10, right: 10 }}
             />
             <YAxis
               tickFormatter={formatCompactCurrency}
               tick={{ fontSize: 11, fill: textSub }}
               axisLine={false}
               tickLine={false}
+              domain={[0, 'auto']}
+              tickCount={5}
             />
             <Tooltip
               content={<CustomTooltip dark={dark} />}
               cursor={{ fill: dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderRadius: '8px' }}
             />
             {/* Blue bars — Income */}
-            <Bar dataKey="income" name="Income" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="income" name="Income" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={40} />
             {/* Red bars — Expense */}
-            <Bar dataKey="expense" name="Expense" fill="#ef4444" radius={[4, 4, 0, 0]} />
-            {/* Green trend line overlay */}
-            <Line
-              type="monotone"
-              dataKey="trend"
-              name="Trend"
-              stroke="#22c55e"
-              strokeWidth={2.5}
-              dot={{ r: 4, fill: '#22c55e', stroke: '#22c55e', strokeWidth: 2 }}
-              activeDot={{ r: 6, fill: '#22c55e', stroke: dark ? '#1a2234' : '#fff', strokeWidth: 2 }}
-            />
+            <Bar dataKey="expense" name="Expense" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={40} />
+            {/* Green trend line — only shown with 2+ data points */}
+            {showTrendLine && (
+              <Line
+                type="monotone"
+                dataKey="trend"
+                name="Trend"
+                stroke="#22c55e"
+                strokeWidth={2.5}
+                dot={{ r: 4, fill: '#22c55e', stroke: '#22c55e', strokeWidth: 2 }}
+                activeDot={{ r: 6, fill: '#22c55e', stroke: dark ? '#1a2234' : '#fff', strokeWidth: 2 }}
+              />
+            )}
           </ComposedChart>
         </ResponsiveContainer>
       )}
