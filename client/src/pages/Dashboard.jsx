@@ -12,18 +12,29 @@ import { formatCurrency } from '../utils/formatCurrency.js';
 import { ArrowDownLeft, ArrowUpRight, ArrowRightLeft, TrendingUp } from 'lucide-react';
 
 const buildChartData = (transactions, userId) => {
-  const days = {};
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  transactions.forEach((tx) => {
+  if (!transactions || transactions.length === 0) return [];
+  
+  // Get the 10 most recent transactions and reverse them to show oldest first (chronological)
+  const sorted = [...transactions].slice(0, 10).reverse();
+
+  return sorted.map((tx) => {
     const txDate = new Date(tx.timestamp);
-    if (txDate < thirtyDaysAgo) return;
-    const dateKey = txDate.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
-    if (!days[dateKey]) days[dateKey] = { date: dateKey, income: 0, expense: 0 };
+    const dateStr = txDate.toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+    }) + ', ' + txDate.toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }).toLowerCase();
+
     const isCredit = tx.type === 'deposit' || (tx.type === 'transfer' && tx.receiver?._id === userId);
-    if (isCredit) days[dateKey].income += tx.amount;
-    else days[dateKey].expense += tx.amount;
+    return {
+      date: dateStr,
+      income: isCredit ? tx.amount : 0,
+      expense: isCredit ? 0 : tx.amount,
+    };
   });
-  return Object.values(days).slice(-30);
 };
 
 export default function Dashboard() {

@@ -12,7 +12,17 @@ import { formatCompactCurrency } from '../../utils/formatCurrency.js';
 import { useDarkMode } from '../../context/DarkModeContext.jsx';
 import { MoreHorizontal } from 'lucide-react';
 
-const CustomTooltip = ({ active, payload, label, dark }) => {
+const MOCK_DATA = [
+  { date: 'Jan', income: 25, expense: 5, trend: 15 },
+  { date: 'Feb', income: 33, expense: 15, trend: 30 },
+  { date: 'Mar', income: 38, expense: 16, trend: 22 },
+  { date: 'Apr', income: 46, expense: 7, trend: 9 },
+  { date: 'May', income: 50, expense: 13, trend: 41 },
+  { date: 'Jun', income: 32, expense: 12, trend: 13 },
+  { date: 'Dec', income: 45, expense: 14, trend: 37 }
+];
+
+const CustomTooltip = ({ active, payload, label, dark, isMock }) => {
   if (active && payload && payload.length) {
     return (
       <div style={{
@@ -29,7 +39,9 @@ const CustomTooltip = ({ active, payload, label, dark }) => {
             <div key={entry.dataKey} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
               <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: entry.color }} />
               <span style={{ color: dark ? '#94a3b8' : '#64748b' }}>{entry.name}:</span>
-              <span style={{ fontWeight: '700', color: entry.color }}>{formatCompactCurrency(entry.value)}</span>
+              <span style={{ fontWeight: '700', color: entry.color }}>
+                {isMock ? entry.value : formatCompactCurrency(entry.value)}
+              </span>
             </div>
           ) : null
         )}
@@ -47,14 +59,15 @@ export default function AnalyticsChart({ data = [], loading }) {
   const textSub = dark ? '#64748b' : '#94a3b8';
   const gridColor = dark ? '#263047' : '#f1f5f9';
 
-  // Trend line only makes sense with 2+ data points
-  const showTrendLine = data.length >= 2;
-
-  // Enrich data with trend value (avg of income + expense)
-  const enrichedData = data.map((d) => ({
-    ...d,
-    trend: showTrendLine ? Math.round((d.income + d.expense) / 2) : undefined,
-  }));
+  const isMock = data.length === 0;
+  
+  // Enrich data with trend value
+  const chartData = isMock 
+    ? MOCK_DATA 
+    : data.map((d) => ({
+        ...d,
+        trend: d.income > 0 ? d.income : d.expense,
+      }));
 
   if (loading) {
     return (
@@ -75,93 +88,64 @@ export default function AnalyticsChart({ data = [], loading }) {
       transition: 'background 0.3s ease',
     }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-        <h3 style={{ margin: 0, fontWeight: '800', fontSize: '18px', color: textMain, letterSpacing: '-0.3px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+        <h3 style={{ margin: 0, fontWeight: '700', fontSize: '16px', color: textMain }}>
           Spending Analytics
         </h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          {/* Legend */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            {[
-              { color: '#3b82f6', label: 'Income' },
-              { color: '#ef4444', label: 'Expense' },
-              ...(showTrendLine ? [{ color: '#22c55e', label: 'Trend', isLine: true }] : []),
-            ].map(({ color, label, isLine }) => (
-              <span key={label} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: textSub, fontWeight: '600' }}>
-                {isLine ? (
-                  <span style={{ width: '16px', height: '2px', background: color, display: 'inline-block', borderRadius: '2px' }} />
-                ) : (
-                  <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: color, display: 'inline-block' }} />
-                )}
-                {label}
-              </span>
-            ))}
-          </div>
-          {/* Menu icon */}
-          <button style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            color: textSub, padding: '2px', borderRadius: '6px',
-            display: 'flex', alignItems: 'center',
-          }}>
-            <MoreHorizontal size={18} />
-          </button>
-        </div>
+        <button style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: textSub, padding: '2px', borderRadius: '6px',
+          display: 'flex', alignItems: 'center',
+        }}>
+          <MoreHorizontal size={18} />
+        </button>
       </div>
 
-      {data.length === 0 ? (
-        <div style={{ height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: '600', color: textMain }}>No chart data yet</p>
-            <p style={{ margin: 0, fontSize: '13px', color: textSub }}>Make transactions to see your analytics</p>
-          </div>
-        </div>
-      ) : (
-        <ResponsiveContainer width="100%" height={240}>
-          <ComposedChart
-            data={enrichedData}
-            margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
-            barCategoryGap={data.length === 1 ? '60%' : '30%'}
-            barGap={4}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-            <XAxis
-              dataKey="date"
-              tick={{ fontSize: 11, fill: textSub }}
-              axisLine={false}
-              tickLine={false}
-              padding={{ left: 10, right: 10 }}
-            />
-            <YAxis
-              tickFormatter={formatCompactCurrency}
-              tick={{ fontSize: 11, fill: textSub }}
-              axisLine={false}
-              tickLine={false}
-              domain={[0, 'auto']}
-              tickCount={5}
-            />
-            <Tooltip
-              content={<CustomTooltip dark={dark} />}
-              cursor={{ fill: dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderRadius: '8px' }}
-            />
-            {/* Blue bars — Income */}
-            <Bar dataKey="income" name="Income" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={40} />
-            {/* Red bars — Expense */}
-            <Bar dataKey="expense" name="Expense" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={40} />
-            {/* Green trend line — only shown with 2+ data points */}
-            {showTrendLine && (
-              <Line
-                type="monotone"
-                dataKey="trend"
-                name="Trend"
-                stroke="#22c55e"
-                strokeWidth={2.5}
-                dot={{ r: 4, fill: '#22c55e', stroke: '#22c55e', strokeWidth: 2 }}
-                activeDot={{ r: 6, fill: '#22c55e', stroke: dark ? '#1a2234' : '#fff', strokeWidth: 2 }}
-              />
-            )}
-          </ComposedChart>
-        </ResponsiveContainer>
-      )}
+      {/* Centered Legend below title */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginBottom: '24px' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: textSub, fontWeight: '600' }}>
+          <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#3b82f6', display: 'inline-block' }} />
+          Income
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: textSub, fontWeight: '600' }}>
+          <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#ef4444', display: 'inline-block' }} />
+          Expense
+        </span>
+      </div>
+
+      <ResponsiveContainer width="100%" height={240}>
+        <ComposedChart
+          data={chartData}
+          margin={{ top: 10, right: 10, left: 35, bottom: 0 }}
+          barCategoryGap={chartData.length === 1 ? '60%' : '30%'}
+          barGap={4}
+        >
+          <CartesianGrid stroke={gridColor} vertical={false} />
+          <XAxis
+            dataKey="date"
+            tick={{ fontSize: 11, fill: textSub }}
+            axisLine={false}
+            tickLine={false}
+            padding={{ left: 10, right: 10 }}
+          />
+          <YAxis
+            tickFormatter={(val) => isMock ? val : formatCompactCurrency(val)}
+            tick={{ fontSize: 11, fill: textSub }}
+            axisLine={false}
+            tickLine={false}
+            domain={[0, 'auto']}
+            tickCount={6}
+          />
+          <Tooltip
+            content={<CustomTooltip dark={dark} isMock={isMock} />}
+            cursor={{ fill: dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderRadius: '8px' }}
+          />
+          {/* Blue bars — Income */}
+          <Bar dataKey="income" name="Income" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={16} minPointSize={4} />
+          {/* Red bars — Expense */}
+          <Bar dataKey="expense" name="Expense" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={16} minPointSize={4} />
+        </ComposedChart>
+      </ResponsiveContainer>
     </div>
   );
 }
