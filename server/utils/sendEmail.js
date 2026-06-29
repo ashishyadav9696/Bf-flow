@@ -4,10 +4,13 @@ import nodemailer from 'nodemailer';
  * Create Nodemailer transporter using SMTP environment variables
  */
 const createTransporter = () => {
+  const port = parseInt(process.env.SMTP_PORT) || 587;
+  const isSecure = port === 465;
+  
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT) || 587,
-    secure: false, // STARTTLS on port 587
+    port: port,
+    secure: isSecure, // true for 465, false for other ports
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
@@ -15,6 +18,8 @@ const createTransporter = () => {
     tls: {
       rejectUnauthorized: false, // Avoid self-signed cert errors in dev
     },
+    connectionTimeout: 5000, // 5 seconds timeout to prevent hanging
+    greetingTimeout: 5000,   // 5 seconds timeout for greeting
   });
 };
 
