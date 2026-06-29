@@ -17,6 +17,9 @@ out/
 .env.production.local
 *.env
 
+# Allow production env for frontend (no secrets, only public API URL)
+!client/.env.production
+
 # IDE / System files
 .vscode/
 .idea/

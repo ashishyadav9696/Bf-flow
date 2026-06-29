@@ -1,0 +1,45 @@
+services:
+  # ─── Backend API (Node.js/Express) ───────────────────────────────────────────
+  - type: web
+    name: bankflow-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGO_URI
+        sync: false   # Set this manually in Render dashboard (keep secret)
+      - key: JWT_SECRET
+        sync: false   # Set this manually in Render dashboard (keep secret)
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_USER
+        sync: false   # Set this manually in Render dashboard
+      - key: SMTP_PASS
+        sync: false   # Set this manually in Render dashboard
+      - key: CLIENT_URL
+        value: https://bankflow-ui.onrender.com  # Update after frontend deploys
+
+  # ─── Frontend (React/Vite Static Site) ───────────────────────────────────────
+  - type: web
+    name: bankflow-ui
+    runtime: static
+    rootDir: client
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://bankflow-api.onrender.com/api  # Update to your actual API URL
