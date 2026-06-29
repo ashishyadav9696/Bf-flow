@@ -15,6 +15,9 @@ dotenv.config();
 
 const app = express();
 
+// Enable trust proxy for Render reverse proxy/load balancer
+app.set('trust proxy', 1);
+
 // Connect to MongoDB
 connectDB();
 
