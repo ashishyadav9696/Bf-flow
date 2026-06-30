@@ -18,8 +18,8 @@ const createTransporter = () => {
     tls: {
       rejectUnauthorized: false, // Avoid self-signed cert errors in dev
     },
-    connectionTimeout: 30000, // 30 seconds — enough for Gmail SSL on port 465
-    greetingTimeout: 30000,   // 30 seconds
+    connectionTimeout: 4000, // 4 seconds — fast failure on blocked ports (e.g. Render Free Tier)
+    greetingTimeout: 4000,   // 4 seconds
   });
 };
 
