@@ -78,6 +78,50 @@ export default function AnalyticsChart({ data = [], loading }) {
     );
   }
 
+  if (data.length === 0) {
+    return (
+      <div style={{
+        background: cardBg,
+        borderRadius: '20px',
+        padding: '24px',
+        border: `1px solid ${cardBorder}`,
+        boxShadow: dark ? '0 4px 32px rgba(0,0,0,0.35)' : '0 4px 24px rgba(0,0,0,0.06)',
+        transition: 'background 0.3s ease',
+      }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <h3 style={{ margin: 0, fontWeight: '700', fontSize: '16px', color: textMain }}>
+            Spending Analytics
+          </h3>
+          <button style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: textSub, padding: '2px', borderRadius: '6px',
+            display: 'flex', alignItems: 'center',
+          }}>
+            <MoreHorizontal size={18} />
+          </button>
+        </div>
+
+        {/* Empty state container */}
+        <div style={{
+          height: '288px', // matched to legend + chart height
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          textAlign: 'center',
+        }}>
+          <span style={{ fontSize: '32px', filter: 'grayscale(30%)' }}>📊</span>
+          <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: textMain }}>No Transactions Yet</p>
+          <p style={{ margin: 0, fontSize: '12px', color: textSub, maxWidth: '240px', lineHeight: '1.5' }}>
+            Your spending analytics chart will appear here once you make your first transaction.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{
       background: cardBg,
