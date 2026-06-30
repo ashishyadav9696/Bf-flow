@@ -91,16 +91,48 @@ const emailWrapper = (content) => `
 `;
 
 /**
+ * Send email using Resend's REST API (useful when SMTP is blocked, e.g. Render Free Tier)
+ */
+const sendResendEmail = async ({ to, subject, html }) => {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    throw new Error('RESEND_API_KEY_NOT_CONFIGURED');
+  }
+
+  // Resend free tier rules:
+  // 1. From address must be onboarding@resend.dev (unless custom domain verified)
+  // 2. To address is restricted to registered account email unless domain verified
+  const fromAddress = 'BankFlow Security <onboarding@resend.dev>';
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: fromAddress,
+      to: to,
+      subject: subject,
+      html: html,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Resend API Error: ${response.status} - ${errorText}`);
+  }
+
+  return await response.json();
+};
+
+/**
  * Send OTP email for verification, transfer, or withdrawal
  * @param {string} email - Recipient email address
  * @param {string} otp - 6-digit OTP code
  * @param {string} purpose - 'verify' | 'transfer' | 'withdraw'
  */
 export const sendOTPEmail = async (email, otp, purpose) => {
-  if (!isSmtpConfigured()) {
-    throw new Error('SMTP_NOT_CONFIGURED');
-  }
-
   const purposeConfig = {
     verify: { title: 'Email Verification OTP', subtitle: 'Verify your account to get started', icon: '✉️' },
     transfer: { title: 'Transfer Authorization OTP', subtitle: 'Confirm your money transfer', icon: '💸' },
@@ -122,6 +154,27 @@ export const sendOTPEmail = async (email, otp, purpose) => {
     </div>
     <p style="color:#6B7280; font-size:13px;">If you did not request this OTP, please ignore this email and ensure your account is secure.</p>
   `;
+
+  // 1. Try sending via Resend API if API Key is configured
+  if (process.env.RESEND_API_KEY) {
+    try {
+      console.log(`[EMAIL] Attempting to send OTP email to ${email} using Resend API...`);
+      await sendResendEmail({
+        to: email,
+        subject: `${otp} is your BankFlow OTP — ${config.title}`,
+        html: emailWrapper(content),
+      });
+      console.log(`[EMAIL] OTP email sent successfully via Resend API.`);
+      return;
+    } catch (resendErr) {
+      console.error('[ERROR] Resend API failed, trying SMTP fallback...', resendErr.message);
+    }
+  }
+
+  // 2. Fallback to standard SMTP
+  if (!isSmtpConfigured()) {
+    throw new Error('SMTP_NOT_CONFIGURED');
+  }
 
   const transporter = createTransporter();
   await transporter.sendMail({
@@ -178,6 +231,28 @@ export const sendTransactionAlert = async (email, txData) => {
     </div>
     <p style="color:#6B7280; font-size:13px;">If you did not authorize this transaction, please contact our support team immediately.</p>
   `;
+
+  // 1. Try sending via Resend API if API Key is configured
+  if (process.env.RESEND_API_KEY) {
+    try {
+      console.log(`[EMAIL] Attempting to send transaction alert email to ${email} using Resend API...`);
+      await sendResendEmail({
+        to: email,
+        subject: `Transaction Alert: ${config.label} — ${formattedAmount}`,
+        html: emailWrapper(content),
+      });
+      console.log(`[EMAIL] Transaction alert email sent successfully via Resend API.`);
+      return;
+    } catch (resendErr) {
+      console.error('[ERROR] Resend API failed for transaction alert, trying SMTP fallback...', resendErr.message);
+    }
+  }
+
+  // 2. Fallback to standard SMTP
+  if (!isSmtpConfigured()) {
+    console.warn('[WARN] SMTP not configured. Skipping transaction alert email.');
+    return;
+  }
 
   const transporter = createTransporter();
   await transporter.sendMail({
